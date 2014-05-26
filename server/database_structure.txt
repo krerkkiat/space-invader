@@ -1,0 +1,23 @@
+*User
+    uid, score
+
+*SpaceShip
+    ssid, type, base_life, base_energy
+
+*User&SpaceShip
+    uid, ssid, wid, wid, aid
+
+*Weapon
+    wid
+
+*Armor
+    aid
+
+Level
+    lid, sid
+
+Stage
+    sid, eid, ...
+
+Enemy
+    eid,
