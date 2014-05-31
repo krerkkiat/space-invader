@@ -1,7 +1,36 @@
-import pygame
-import psycopg2
+import json
+import socket
 
-from config import *
+import pygame
+
+from config import Config
+
+class ConnectionManager:
+
+    @classmethod
+    def init(class_):
+        class_._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        class_._socket.connect((Config.host, Config.port))
+
+    @classmethod
+    def send(class_, message):
+        '''send and recv ??'''
+        if type(message) == bytes:
+            class_._socket.send(message)
+        else:
+            class_._socket.send(bytes(message, 'utf-8'))
+
+        src = class_._socket.recv(8192).decode('utf-8')
+        result = json.loads(src)
+        return result
+
+    @classmethod
+    def isSuccessfulResponse(class_, result):
+        return result['type'] == 'response' and result['status'] == 'successful'
+
+    @classmethod
+    def close(class_):
+        class_._socket.close()
 
 class LocalResourceManager:
     '''Provide resource from assets root to object
@@ -30,15 +59,15 @@ class SurfaceManager(LocalResourceManager):
     '''Provide resource of surface'''
 
     @classmethod
-    def register(class_, id_, path, colorkey=None, convertAlpha=False):
+    def register(class_, id_, path, color_key=None, convert_alpha=False):
         if id_ not in class_._resources:
             class_._resources[id_] = list()
 
         sur = pygame.image.load(path)
-        if colorkey != None:
-            sur.set_colorkey(colorkey)
+        if color_key != None:
+            sur.set_colorkey(color_key)
 
-        if convertAlpha:
+        if convert_alpha:
             class_._resources[id_].append(sur.convert_alpha())
         else:
             class_._resources[id_].append(sur.convert())

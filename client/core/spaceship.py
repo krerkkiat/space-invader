@@ -104,11 +104,10 @@ class SpaceShip(MovingObject):
                 self._anime = 0
                 self.dirty = 1
             elif event.key == ord('n'):
-                self._shield.isActivate = not self._shield.isActivate
+                # self._shield.isActivate = not self._shield.isActivate
+                self._shield.isActivate = True
                 if self._shield.isActivate:
                     self._scene.addElement(self._shield, layer=2)
-                else :
-                    self._shield.kill()
                 self._shield.dirty = 1
                 self.dirty = 1
             elif event.key == ord('j'):     # inside event to delay fire
@@ -249,7 +248,7 @@ class Bullet(MovingObject):
     def update(self, cycleTime):
         '''Override from core.scene.SceneElement'''
         self._rect.move_ip(self._velocity.x, self._velocity.y)
-        if self._rect.y <= 100 or self._rect.y >= Config.windowHeight:
+        if self._rect.y <= 0 or self._rect.y >= Config.windowHeight-60:
             self.kill()
         self.dirty = 1
 
@@ -392,12 +391,12 @@ class Shield(pygame.sprite.DirtySprite):
             if self._drainRateCycle >= self._drainRateInterval:
                 engine.energy -= self._drainRate
 
-                if engine.energy <= 0:
-                    engine.energy = 0
-                    self._isActivate = False
-
                 self._drainRateCycle = 0
 
+            if engine.energy <= 0:
+                engine.energy = 0
+                self._isActivate = False
+                self.kill()
             self.dirty = 1
 
     @property

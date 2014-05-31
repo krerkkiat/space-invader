@@ -1,4 +1,7 @@
-import asyncore
+import os
+import sys
+import json
+import socket
 import threading
 
 import pygame
@@ -7,7 +10,9 @@ import fbconsole as fb
 from config import Config
 from core.scene import TestScene
 from core.client import SpaceInvaderClient
-from core.registerer import Registerer 
+from core.registerer import Registerer
+from core.pilot import Pilot
+from core.manager import *
 
 class SpaceInvader:
     def __init__(self):
@@ -35,16 +40,47 @@ class SpaceInvader:
         fb.SERVER_PORT = 8088 # port 8080 which are default are conflict with PHP server of postgreSQL
         fb.AUTH_SCOPE = ['publish_stream']
         fb.authenticate()
+        result = fb.get('/me')
+        id_ = result['id']
+        name = result['name']
 
-        self.client = SpaceInvaderClient()
-        self.clientThread = threading.Thread(target=asyncore.loop)
-        self.clientThread.start()
+        self._pilot = Pilot(id_, name)
 
-        registerer = Registerer(self.client)
+        ConnectionManager.init()
 
+        # login to our server
+        login_data = bytes('{"type":"action", "value":"login", "uid":"%s"}' % self._pilot.id, 'utf-8')
+        result = ConnectionManager.send(login_data)
+        if not ConnectionManager.isSuccessfulResponse(result):
+            sys.exit()
+
+        # fetch local resource register data
+        result = ConnectionManager.send('''{"type":"action","value":"get","target":"resource_register_data"}''')
+        for key in result['data']:
+            if key == 'surface':
+                self.regisSurfaces(result['data']['surface'])
+                
+                    # SurfaceManager.register('sh000', os.path.join(Config.assetsRoot, 'spaceship', 'arboris', 'arboris_left.png'), color_key=(255, 0, 255))
+
+        ConnectionManager.close()
+
+    def regisSurfaces(self, surfaces):
+        for id_ in surfaces:
+            for i in range(len(surfaces[id_])): 
+                color_key = None
+                convert_alpha = False
+                if 'color_key' in surfaces[id_][i]:
+                    color_key = tuple(surfaces[id_][i]['color_key'])
+                if 'convert_alpha' in surfaces[id_][i]:
+                    convert_alpha = True
+
+                path = Config.assetsRoot + ',' + ','.join(surfaces[id_][i]['path'])
+                SurfaceManager.register(id_, os.path.join(*path.split(',')), color_key=color_key, convert_alpha=convert_alpha)
+                
     def run(self):
-        TestScene(self).run()
+        TestScene(self, self._pilot).run()
 
 if __name__ == '__main__':
+    pilot = None
     SpaceInvader().run()
         

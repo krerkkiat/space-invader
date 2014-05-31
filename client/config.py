@@ -1,7 +1,5 @@
 import pygame
 
-from core.manager import *
-
 class Config:
 
     @classmethod

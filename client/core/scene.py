@@ -110,8 +110,9 @@ class LevelScene(Scene):
     pass
 
 class TestScene(Scene):
-    def __init__(self, game):
+    def __init__(self, game, pilot):
         super().__init__(game)
+        self._pilot = pilot
 
         self._background.fill(Config.colors['black'])
         self._elements.clear(self._canvas, self._background)
@@ -129,23 +130,23 @@ class TestScene(Scene):
         self._enemyBullets.clear(self._canvas, self._background)
 
     def _loadData(self):
-        SurfaceManager.register('sh000', os.path.join(Config.assetsRoot, 'spaceship', 'arboris', 'arboris_left.png'), colorkey=(255, 0, 255))
-        SurfaceManager.register('sh000', os.path.join(Config.assetsRoot, 'spaceship', 'arboris', 'arboris_center.png'), colorkey=(255, 0, 255))
-        SurfaceManager.register('sh000', os.path.join(Config.assetsRoot, 'spaceship', 'arboris', 'arboris_right.png'), colorkey=(255, 0, 255))
-        SurfaceManager.register('sd000', os.path.join(Config.assetsRoot, 'spaceship', 'shield', 'shield_0.png'), colorkey=(255, 0, 255))
-        SurfaceManager.register('sd000', os.path.join(Config.assetsRoot, 'spaceship', 'shield', 'shield_1.png'), colorkey=(255, 0, 255))
+        '''
+        SurfaceManager.register('sh000', os.path.join(Config.assetsRoot, 'spaceship', 'arboris', 'arboris_left.png'), color_key=(255, 0, 255))
+        SurfaceManager.register('sh000', os.path.join(Config.assetsRoot, 'spaceship', 'arboris', 'arboris_center.png'), color_key=(255, 0, 255))
+        SurfaceManager.register('sh000', os.path.join(Config.assetsRoot, 'spaceship', 'arboris', 'arboris_right.png'), color_key=(255, 0, 255))
+        SurfaceManager.register('sd000', os.path.join(Config.assetsRoot, 'spaceship', 'shield', 'shield_0.png'), color_key=(255, 0, 255))
+        SurfaceManager.register('sd000', os.path.join(Config.assetsRoot, 'spaceship', 'shield', 'shield_1.png'), color_key=(255, 0, 255))
         SurfaceManager.register('wp000', os.path.join(Config.assetsRoot, 'bullet.png'), True)
         SurfaceManager.register('em000', os.path.join(Config.assetsRoot, 'enemy', 'test', 'test_left.png'), True)
         SurfaceManager.register('em000', os.path.join(Config.assetsRoot, 'enemy', 'test', 'test.png'), True)
         SurfaceManager.register('em000', os.path.join(Config.assetsRoot, 'enemy', 'test', 'test_right.png'), True)
         SurfaceManager.register('em000', os.path.join(Config.assetsRoot, 'enemy', 'test', 'test.png'), True)
-
-        pilot = Pilot('100001868030396', 'KC')
+        '''
         # bullet also use same id as weapon (because it represent only image)
         bullet = Bullet(self, 'wp000', 10, pygame.math.Vector2(0, -15))
         weapon = Weapon('wp000', 'TestWeapon', bullet, 10, 15)
         armor = Armor('am000', 'TestArmor', 5)
-        shield = Shield('sd000', 'TestShield', 2, 2000, 10)
+        shield = Shield('sd000', 'TestShield', 10, 2000, 10)
         engine = Engine('eg000', 'TestEngine', 70, 2, 2000)
 
         testship = SpaceShip(self, 'sh000', '100001868030396', 'TestShip', 50, weapon, armor, shield, engine)
@@ -166,7 +167,7 @@ class TestScene(Scene):
             self.addElement(tem)
             self._enemys.add(tem)
 
-        self._pilotBar = PilotBar(self, pilot)
+        self._pilotBar = PilotBar(self, self._pilot)
         self.addElement(self._pilotBar)
 
     def run(self):
