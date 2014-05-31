@@ -27,6 +27,7 @@ databaseConnection = psycopg2.connect(
 )'''
 
 clients = dict()
+
 logger = logging.getLogger('spaceinvader')
 logger.setLevel(logging.DEBUG)
 
@@ -62,14 +63,15 @@ class ClientHandler(asyncore.dispatcher_with_send):
     def handle_read(self):
         address = self.getpeername()
         rawData = self.recv(8192)
+        
+        logger.info('[%s:%d] Received %d byte(s)', address[0], address[1], len(rawData))
+        logger.debug('[%s:%d] data: %s', address[0], address[1], rawData)
+        
         if rawData:
-            logger.info('[%s:%d] Received %d byte(s)', address[0], address[1], len(rawData))
-            logger.debug('[%s:%d] data: %s', address[0], address[1], rawData)
-
             # processing request message
             try:
-                # why? i need to double decode this json text?
-                # ans: double json encode (encode json string)
+                # q: why? i need to double decode this json text?
+                # a: double json encode (encode json string)
                 # msg = anyjson.deserialize(anyjson.deserialize(rawData.decode('utf-8')))
                 msg = anyjson.deserialize(rawData.decode('utf-8'))
                 if msg['type'] == 'action':
@@ -77,7 +79,25 @@ class ClientHandler(asyncore.dispatcher_with_send):
                         if msg['target'] == 'resource_register_data':
                             target_file = open(os.path.join(dataRoot, 'resource_register_data.json'), 'r')
                             target_data = target_file.read()
-                            self.out_buffer = self.encodeMessage('''{"type":"response","to":"action","value":"get","target":"resource_register_data","data":%s}''' % target_data)
+
+                            out_msg = '''{"type":"response","to":"action","value":"get","target":"resource_register_data","status":"successful","data":%s}''' % target_data
+                            logger.debug('[%s:%d] out going data: %s', address[0], address[1], out_msg)
+
+                            self.out_buffer = self.encodeMessage(out_msg)
+                    elif msg['value'] == 'login':
+                        uid = msg['uid']
+                        cur = databaseConnection.cursor()
+                        cur.execute("SELECT id from pilot WHERE id=%s", (uid,))
+                        row = cur.fetchone()
+                        if row != None:
+                            logger.info('[%s:%d] User login with id \'%s\'', address[0], address[1], row[0].rstrip())
+                            
+                            out_msg = '{"type":"response","to":"action","value":"login","status":"successful"}'
+                            self.out_buffer = self.encodeMessage(out_msg)
+                        else:
+                            out_msg = '{"type":"response","to":"action","value":"login","status":"fail"}'
+                            self.out_buffer = self.encodeMessage(out_msg)
+
             except Exception as e:
                 logger.exception('[%s:%d] Something went wrong', address[0], address[1])
                 self.out_buffer = self.encodeMessage('{"type":"info", "value":"error"}')
@@ -102,15 +122,21 @@ try:
     logger.info("Server started at 127.0.0.1:%d", Config.PORT)
     asyncore.loop()
 except KeyboardInterrupt as e:
-    print(e)
     logger.info("Shutting down from KeyboardInterrupted")
     for client in clients:
         clients[client].close()
     logger.info("All client connections closed")
-    logging.shutdown()
+
+    databaseConnection.commit()
+    logger.info("Database commited")
+    databaseConnection.close()
+    logger.info("Database connection closed")
+    
 except Exception as e:
+    logger.exception('Something went wrong')
     logger.critical('Shutting down from unknow critical error: %s', e)
 logger.info('Shutting down successful')
+logging.shutdown()
 
 '''
 msg structure

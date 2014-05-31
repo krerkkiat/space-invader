@@ -9,11 +9,10 @@ def callback(data):
 
 class TestClient(asyncore.dispatcher_with_send):
 
-    def __init__(self, host, port, message):
+    def __init__(self, host, port):
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connect((host, port))
-        self.out_buffer = bytes(message, 'utf-8')    
 
     def handle_read(self):
         rawData = self.recv(8192)
@@ -23,8 +22,10 @@ class TestClient(asyncore.dispatcher_with_send):
         # print(msg['data'])
         callback(msg['data'])
         
-tc = TestClient('127.0.0.1', 12200, '''{"type":"action","value":"get","target":"resource_register_data"}''')
+tc = TestClient('127.0.0.1', 12200)
+
 client = threading.Thread(target=asyncore.loop)
 client.start()
+tc.out_buffer = bytes('''{"type":"action","value":"get","target":"resource_register_data"}''', 'utf-8')
 s = input('>')
 print(s)

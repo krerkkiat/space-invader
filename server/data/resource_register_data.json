@@ -1,50 +1,52 @@
 {
-    "sh000": [
-        {
-            "path": ["spaceship", "arboris", "arboris_left.png"],
-            "color_key": [255, 0, 255]
-        },
-        { 
-            "path": ["spaceship", "arboris", "arboris_center.png"],
-            "color_key": [255, 0, 255]
-        },
-        {
-            "path": ["spaceship", "arboris", "arboris_right.png"],
-            "color_key": [255, 0, 255]
-        }
-    ],
-    "sh000": [
-        {
-            "path": ["spaceship", "shield", "shiled_0.png"],
-            "color_key": [255, 0, 255]
-        },
-        {
-            "path": ["spaceship", "shield", "shiled_1.png"],
-            "color_key": [255, 0, 255]
-        }
-    ],
-    "wp000": [
-        {
-            "path": ["bullet.png"],
-            "convert_alpha": true
-        }
-    ],
-    "em000": [
-        {
-            "path": ["enemy", "test", "test_left.png"],
-            "convert_alpha": true
-        },
-        {
-            "path": ["enemy", "test", "test.png"],
-            "convert_alpha": true
-        },
-        {
-            "path": ["enemy", "test", "test_right.png"],
-            "convert_alpha": true
-        },
-        {
-            "path": ["enemy", "test", "test.png"],
-            "convert_alpha": true
-        }
-    ]
+    "surface": {
+        "sh000": [
+            {
+                "path": ["spaceship", "arboris", "arboris_left.png"],
+                "color_key": [255, 0, 255]
+            },
+            { 
+                "path": ["spaceship", "arboris", "arboris_center.png"],
+                "color_key": [255, 0, 255]
+            },
+            {
+                "path": ["spaceship", "arboris", "arboris_right.png"],
+                "color_key": [255, 0, 255]
+            }
+        ],
+        "sd000": [
+            {
+                "path": ["spaceship", "shield", "shield_0.png"],
+                "color_key": [255, 0, 255]
+            },
+            {
+                "path": ["spaceship", "shield", "shield_1.png"],
+                "color_key": [255, 0, 255]
+            }
+        ],
+        "wp000": [
+            {
+                "path": ["bullet.png"],
+                "convert_alpha": true
+            }
+        ],
+        "em000": [
+            {
+                "path": ["enemy", "test", "test_left.png"],
+                "convert_alpha": true
+            },
+            {
+                "path": ["enemy", "test", "test.png"],
+                "convert_alpha": true
+            },
+            {
+                "path": ["enemy", "test", "test_right.png"],
+                "convert_alpha": true
+            },
+            {
+                "path": ["enemy", "test", "test.png"],
+                "convert_alpha": true
+            }
+        ]
+    }
 }
