@@ -3,12 +3,80 @@ import os
 import pygame
 
 from config import *
+from core.scene import *
 
-class PilotBar(pygame.sprite.DirtySprite):
+class MessageBox(SceneElement):
+    def __init__(self, scene, message, interval=0, padding=0, textPosition='left', position='bottom', image=None):
+        super().__init__(scene)
+
+        self._scene.addEventListener(self.handleEvent)
+
+        self._message = message
+        self._image = image
+
+        self._animeCycle = 0
+        self._animeInterval = interval
+
+        # build message box
+        width, height = (Config.windowWidth - 2*padding, Config.windowHeight//6)
+        dummyRect = pygame.Rect(0, 0, width, height)
+        self._image = pygame.Surface((width, height))
+        self._image.set_alpha(180)
+        self._image.fill(Config.colors['white'])
+        self._rect = self._image.get_rect()
+
+        if position == 'bottom':
+            self._rect.left = padding
+            self._rect.bottom = Config.windowHeight - padding
+        elif position == 'middle':
+            self._rect.left = padding
+            self._rect.centery = Config.windowHeight//2
+        elif position == 'top':
+            self._rect.left = padding
+            self._rect.top = padding
+
+        font = pygame.font.Font(os.path.join(Config.assetsRoot, 'font', 'TudorRose.otf'), 20)
+        message_surface = font.render(message, True, Config.colors['black'], None)
+        message_rect = message_surface.get_rect()
+
+        if textPosition == 'center':
+            message_rect.centerx = dummyRect.centerx
+            message_rect.centery = dummyRect.centery
+        elif textPosition == 'left':
+            message_rect.left = 100     # offset for image
+            message_rect.top = 10
+
+        self._image.blit(message_surface, message_rect)
+
+        if image:
+            self._image.blit(image, (10, 10))
+
+    def update(self, cycleTime):
+        if self._animeInterval > 0:
+            self._animeCycle += cycleTime
+            if self._animeCycle >= self._animeInterval:
+                self._animeCycle = 0
+                self.kill()
+                self._scene.removeEventListener(self.handleEvent)
+
+    @property
+    def image(self):
+        return self._image
+
+    @property
+    def rect(self):
+        return self._rect
+
+    def handleEvent(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RETURN:
+                self.kill()
+                self._scene.removeEventListener(self.handleEvent)
+
+class PilotBar(SceneElement):
     def __init__(self, scene, pilot):
-        super().__init__()
+        super().__init__(scene)
 
-        self._scene = scene
         self._pilot = pilot
 
         self._image = pygame.Surface((Config.windowWidth//3, 70))
@@ -42,13 +110,12 @@ class PilotBar(pygame.sprite.DirtySprite):
     def rect(self):
         return self._rect
 
-class HealthBar(pygame.sprite.DirtySprite):
+class HealthBar(SceneElement):
     def __init__(self, scene, thing, barWidth= 50):
-        super().__init__()
+        super().__init__(scene)
 
         self._barWidth = barWidth
 
-        self._scene = scene
         self._thing = thing
         self._image = pygame.Surface((50, 10))
         self._rect = self._image.get_rect()

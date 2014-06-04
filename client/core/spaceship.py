@@ -130,6 +130,7 @@ class SpaceShip(MovingObject):
         if self._hp <= 0:
             self.kill()
             self._healthBar.kill()
+            SceneManager.call(SummaryScene(self._scene.game))
 
     @property
     def id(self):
@@ -196,14 +197,15 @@ class Weapon:
     @classmethod
     def fromJSON(class_, obj):
         velocity = pygame.math.Vector2(0, -obj['bulletSpeed'])
-        bullet = Bullet(obj['id'], obj['attack'], velocity)
-        return Weapon(obj['id'], obj['name'], bullet,  obj['attack'], obj['bulletSpeed'])    
+        bullet = Bullet(obj['bulletId'], obj['attack'], velocity)
+        return Weapon(obj['id'], obj['name'], obj['attack'], obj['bulletId'], obj['bulletSpeed'], bullet)
     
-    def __init__(self, id_, name, bullet, attack, bulletSpeed):
+    def __init__(self, id_, name, attack, bulletId, bulletSpeed, bullet):
         self._id = id_
         self._name = name
         self._bullet = bullet
         self._attack = attack
+        self._bulletId = bulletId
         self._bulletSpeed = bulletSpeed
 
     def fire(self):

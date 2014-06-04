@@ -1,9 +1,54 @@
-import json
+import sys
 import socket
+import threading
 
 import pygame
+import anyjson
 
 from config import Config
+
+class SceneManager:
+
+    @classmethod
+    def init(class_):
+        class_.sceneStack = []
+        class_.currentScene = None
+
+    @classmethod
+    def call(class_, scene, preload=None):
+        class_.sceneStack.append(class_.currentScene)
+
+        if preload:
+            preload.nextScene = scene
+            class_.currentScene = preload
+            load_thread = threading.Thread(target=scene.loadData, args=(preload,))
+            load_thread.start()
+        else:
+            class_.currentScene = scene
+
+    @classmethod
+    def ret(class_):
+        class_.currentScene = class_.sceneStack.pop(len(class_.sceneStack)-1)
+
+    @classmethod
+    def goto(class_, scene):
+        class_.currentScene = scene
+
+    @classmethod
+    def clear(class_):
+        class_.sceneStack.clear()
+
+    @classmethod
+    def run(class_):
+        while class_.currentScene:
+            class_.currentScene.run()
+
+    @classmethod
+    def exit(class_):
+        class_.currentScene = None
+        pygame.quit()
+        ConnectionManager.close()
+        sys.exit()
 
 class ConnectionManager:
 
@@ -21,7 +66,7 @@ class ConnectionManager:
             class_._socket.send(bytes(message, 'utf-8'))
 
         src = class_._socket.recv(8192).decode('utf-8')
-        result = json.loads(src)
+        result = anyjson.deserialize(src)
         return result
 
     @classmethod
@@ -104,5 +149,3 @@ class SoundEffectManager(LocalResourceManager):
     @classmethod
     def register(class_, id_, path):
         class_._resources[id_] = pygame.mixer.Sound(path)
-
-LocalResourceManager.init()

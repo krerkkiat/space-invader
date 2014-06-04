@@ -1,10 +1,11 @@
 import pygame
+import fbconsole as fb
 
 class Config:
 
     @classmethod
     def init(class_):
-        class_.host = '127.0.0.1'
+        class_.host = 'localhost'
         class_.port = 12200
 
         class_.assetsRoot = 'assets'
@@ -22,5 +23,9 @@ class Config:
         class_.colors['blue'] = (0, 0, 255)
 
         class_.colors['aquamarine'] = (127, 255, 212)
+
+        fb.SERVER_PORT = 8088 # port 8080 which are default are conflict with PHP server of postgreSQL
+        fb.APP_ID = '831118013571771'   # use Project 02 app
+        fb.AUTH_SCOPE = ['publish_stream']
 
 Config.init()
