@@ -24,7 +24,7 @@
                 "color_key": [255, 0, 255]
             }
         ],
-        "wp000": [
+        "bu000": [
             {
                 "path": ["bullet.png"],
                 "convert_alpha": true
