@@ -112,8 +112,7 @@ class SpaceShip(MovingObject):
                 self.dirty = 1
             elif event.key == ord('j'):     # inside event to delay fire
                 b = self.fire()
-                self._scene._spaceShipBullets.add(b)   # Warnning
-                self._scene.addElement(b)
+                self._scene.addSpaceshipBullet(b)
 
     def fire(self):
         '''Return bullet from weapon.fire()'''

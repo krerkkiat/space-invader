@@ -23,6 +23,8 @@ class Config:
         class_.colors['blue'] = (0, 0, 255)
 
         class_.colors['aquamarine'] = (127, 255, 212)
+        class_.colors['gray'] = (128, 128, 128)
+        class_.colors['darkGray'] = (169, 169, 169)
 
         fb.SERVER_PORT = 8088 # port 8080 which are default are conflict with PHP server of postgreSQL
         fb.APP_ID = '831118013571771'   # use Project 02 app

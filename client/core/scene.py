@@ -154,7 +154,7 @@ class Preload(Scene):
         self._clock.tick(Config.ticks)
 
         if not self._isLoading:
-            print('Load complete going to nextScene')
+            print('Load complete going to nextScene:', self._nextScene.__class__)
             SceneManager.goto(self._nextScene)
 
     def update(self):
@@ -182,71 +182,54 @@ class Preload(Scene):
 class MainScene(Scene):
     def __init(self, game):
         super().__init__(game)
-        print('MainScene initialize')
 
-        self._scoreChart = None
+        self._scoreBoard = None
 
     def loadData(self, preload):
         preload.isLoading = True
-        try:
-            fb.authenticate()
-            print('Authenticate to Facebook complete')
-            result = fb.get('/me')
-            uid = result['id']
-            name = result['name']
-            
-            # self._game._pilot = Pilot('100001868030396', 'Krerkkiat Chusap')
-
-            # login to our server
-            login_data = bytes('{"type":"action", "value":"login", "uid":"%s"}' % uid, 'utf-8')
-            result = ConnectionManager.send(login_data)
-            if ConnectionManager.isSuccessfulResponse(result):
-                self._game._pilot = Pilot(uid, name, result['data']['score'], result['data']['wave'])
-                print('Authenticate to our server complete')
-            else:
-                SceneManager.exit()
-
-            # fetch local resource register data
-            result = ConnectionManager.send('''{"type":"action","value":"get","target":"resource_register_data"}''')
-            for key in result['data']:
-                if key == 'surface':
-                    self.regisSurfaces(result['data']['surface'])
-            print('Local resource register data loaded')
-
-            # get friend list
-            result = fb.fql('SELECT uid FROM user WHERE is_app_user AND uid IN (SELECT uid2 FROM friend WHERE uid1 = me())')
-            # insert some fake data
-            # result.extend([{'uid':'100000533319275'}])
-
-            friends_that_use_this_app = [entry['uid'] for entry in result]
-            
-            print(friends_that_use_this_app)
-
-            data = bytes('{"type":"action","value":"get","target":"score_board","data":%s}' % anyjson.serialize(friends_that_use_this_app), 'utf-8')
-            friends = ConnectionManager.send(data)
-            print(friends)
-
-        except Exception as e:
-            print(e)
-            SceneManager.exit()
+        # try: 
+        self._createScoreBoard()
+        # except Exception as e:
+            # print(e)
+            # SceneManager.exit()
 
         preload.isLoading = False
 
-    def regisSurfaces(self, surfaces):
-        for id_ in surfaces:
-            for i in range(len(surfaces[id_])): 
-                color_key = None
-                convert_alpha = False
-                if 'color_key' in surfaces[id_][i]:
-                    color_key = tuple(surfaces[id_][i]['color_key'])
-                if 'convert_alpha' in surfaces[id_][i]:
-                    convert_alpha = True
+    def _createScoreBoard(self):
+        # get friends list
+        fb_result = fb.fql('SELECT uid, name FROM user WHERE is_app_user AND uid IN (SELECT uid2 FROM friend WHERE uid1 = me())')
 
-                path = Config.assetsRoot + ',' + ','.join(surfaces[id_][i]['path'])
-                SurfaceManager.register(id_, os.path.join(*path.split(',')), color_key=color_key, convert_alpha=convert_alpha)
-        
+        # insert some fake data
+        fb_result.extend([{'uid':'100000533319275', 'name':'Pornchanok'}])       # Pornchanok id
+        fb_result.extend([{'uid':'247059255488681', 'name':'Test User #1'}])     # friend of Test User #1
+        # fb_result.extend([{'uid':'252287594960325', 'name':'Test User #2'}])     # friend of Test User #2
+
+        friends_that_use_this_app = [entry['uid'] for entry in fb_result]
+        data = bytes('{"type":"action","value":"get","target":"score_board","data":%s}' % anyjson.serialize(friends_that_use_this_app), 'utf-8')
+        result = ConnectionManager.send(data)
+        if ConnectionManager.isSuccessfulResponse(result):
+            self._friends = []
+            # data = [d['name'] = fd['name'] for d in result['data'] for fd in fb_result if fd['uid'] == d['id']]
+            data = []
+            for d in result['data']:
+                for fd in fb_result:
+                    if fd['uid'] == d['id']:
+                        d['name'] = fd['name']
+                        data.append(d)
+            for f in result['data']:
+                self._friends.append(Pilot(f['id'], f['name'], f['score'], f['wave'], f['time']))
+
+        w, h = (400, 600)
+        rowData = [('', 'Name', 'Score', 'Wave')]
+        rowData.extend([(str(i+1), pilot.name, str(pilot.bestScore), str(pilot.bestWave)) for i, pilot in enumerate(self._friends)])
+        columnWidth = [30, 200, 75, 75]
+        self._scoreBoard = Table(self, w, h, rowData, columnWidth)
+        self._scoreBoard.rect.bottom = Config.windowHeight
+        self.addElement(self._scoreBoard)
+        self.addEventListener(self._scoreBoard.handleEvent)
+
     def run(self):
-        SceneManager.goto(TestScene(self._game))
+        # SceneManager.goto(GameScene(self._game, {}, 7))
         for event in pygame.event.get():
             self._handleEvent(event)
         
@@ -258,10 +241,78 @@ class MainScene(Scene):
         super().update()
 
     def draw(self):
+        updatedRects = self._elements.draw(self._canvas)
+        pygame.display.update(updatedRects)
+
+class GameScene(Scene):
+    def __init__(self, game, spaceshipData, seed):
+        super().__init__(game)
+
+        self._background.fill(Config.colors['black'])
+        self._elements.clear(self._canvas, self._background)
+
+        self._enemyGenerator = EnemyWaveGenerator(self, paths=[SpiralPath], seed=seed)
+
+        # sprite group for contain Sapceships
+        self._spaceshipFleet = pygame.sprite.LayeredDirty()
+        self._spaceshipFleet.clear(self._canvas, self._background)
+        self._spaceshipFleetBullets = pygame.sprite.LayeredDirty()
+        self._spaceshipFleetBullets.clear(self._canvas, self._background)
+
+        # add spaceship
+        spaceship = SpaceShip.fromJSON(spaceshipData)
+        self._spaceshipFleet.add(spaceship)
+        self.addElement(spaceship)
+        self.addEventListener(spaceship.handleEvent)
+
+        # sprite group for contain Enemy
+        self._enemyWaveBullets = pygame.sprite.LayeredDirty()
+        self._enemyWaveBullets.clear(self._canvas, self._background) 
+
+        self._enemyWave = self._enemyGenerator.nextWave()
+        for e in self._enemyWave:
+            self.addElement(e)
+
+        # add HUD
+        self._pilotBar = PilotBar(self, self._game._pilot)
+        self.addElement(self._pilotBar)
+
+    def addSpaceshipBullet(self, bullet):
+        self._spaceshipFleetBullets.add(bullet)
+        self.addElement(bullet)
+
+    def addEnemyBullet(self, bullet):
+        self._enemyWaveBullets.add(bullet)
+        self.addElement(bullet)        
+
+    def loadData(self):
         pass
 
-class LevelScene(Scene):
-    pass
+    def run(self):
+        for event in pygame.event.get():
+            self._handleEvent(event)
+        self.update()
+        self.draw()
+        self._clock.tick(Config.ticks)
+
+    def update(self):
+        super().update()
+
+        bulletHitEnemy = pygame.sprite.groupcollide(self._spaceshipFleetBullets, self._enemyWave, True, False)
+        for bullet in bulletHitEnemy:
+            if len(bulletHitEnemy[bullet]) != 0:
+                for enemy in bulletHitEnemy[bullet]:
+                    enemy.onBulletHit(bullet)
+
+        bulletHitSpaceShip = pygame.sprite.groupcollide(self._enemyWaveBullets, self._spaceshipFleet, True, False)
+        for bullet in bulletHitSpaceShip:
+            if len(bulletHitSpaceShip[bullet]) != 0:
+                for spaceship in bulletHitSpaceShip[bullet]:
+                    spaceship.onBulletHit(bullet)
+
+    def draw(self):
+        updatedRects = self._elements.draw(self._canvas)
+        pygame.display.update(updatedRects)
 
 class SummaryScene(Scene):
     def __init__(self, game):
@@ -287,7 +338,6 @@ class SummaryScene(Scene):
 class TestScene(Scene):
     def __init__(self, game):
         super().__init__(game)
-        print('Init TestScene')
 
         self._background.fill(Config.colors['black'])
         self._elements.clear(self._canvas, self._background)
@@ -320,13 +370,14 @@ class TestScene(Scene):
         SurfaceManager.register('em000', os.path.join(Config.assetsRoot, 'enemy', 'test', 'test.png'), True)
         '''
         # bullet also use same id as weapon (because it represent only image)
+        # edit: changed  , bullet use it own id
         bullet = Bullet(self, 'bu000', 10, pygame.math.Vector2(0, -15))
         weapon = Weapon('wp000', 'TestWeapon', 10, 'bu000', 15, bullet)
         armor = Armor('am000', 'TestArmor', 5)
         shield = Shield('sd000', 'TestShield', 10, 2000, 10)
         engine = Engine('eg000', 'TestEngine', 70, 2, 2000)
 
-        testship = SpaceShip(self, 'sh000', '100001868030396', 'TestShip', 50, weapon, armor, shield, engine)
+        testship = SpaceShip(self, 'sh000', '100001868030396', 'TestShip', 100, weapon, armor, shield, engine)
         testship.velocity.x = 10
         testship.velocity.y = 10
         testship.rect.centerx = Config.windowWidth/2
@@ -344,6 +395,14 @@ class TestScene(Scene):
         self.addElement(self._pilotBar)
 
         self.addElement(MessageBox(self, 'Test Text ^^', interval=1200))
+
+    def addSpaceshipBullet(self, bullet):
+        self._spaceShipBullets.add(bullet)
+        self.addElement(bullet)
+
+    def addEnemyBullet(self, bullet):
+        self._enemyBullets.add(bullet)
+        self.addElement(bullet)        
 
     def loadData(self):
         pass

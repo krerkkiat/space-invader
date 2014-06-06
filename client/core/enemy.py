@@ -73,8 +73,7 @@ class Enemy(MovingObject):
         if self._fireCycle >= self._fireInterval:
             self._fireCycle = 0
             b = self.fire()
-            self._scene.addElement(b)
-            self._scene._enemyBullets.add(b)
+            self._scene.addEnemyBullet(b)
 
         self._moveCycle += cycleTime
         if self._moveCycle >= self._moveInterval:
