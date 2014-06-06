@@ -43,6 +43,9 @@ class SpaceInvaderServer(asyncore.dispatcher):
         logger.info("Connection from %s:%d accepted", address[0], address[1]) 
         clients[address] = ClientHandler(newSocket)
 
+    def handle_error(self):
+        logger.exception('Something went wrong')
+
 class ClientHandler(asyncore.dispatcher_with_send):
 
     def __init__(self, sock):
@@ -59,18 +62,14 @@ class ClientHandler(asyncore.dispatcher_with_send):
         logger.debug('[%s:%d] incoming data: %s', self._address[0], self._address[1], rawData)
         
         if rawData:
-            # processing request message
             try:
-                # q: why? i need to double decode this json text?
-                # a: double json encode (encode json string)
-                # msg = anyjson.deserialize(anyjson.deserialize(rawData.decode('utf-8')))
                 msg = anyjson.deserialize(rawData.decode('utf-8'))
                 if msg['type'] == 'action':
                     if msg['value'] == 'get':
                         if msg['target'] == 'resource_register_data':
                             out_msg = self.handle_resource_register_data()
                         elif msg['target'] == 'score_board':
-                            # expect friends as list
+                            # expect list of uid
                             out_msg = self.handle_score_board(msg['data'])
                     elif msg['value'] == 'login':
                         out_msg = self.handle_login(msg['uid'])
@@ -92,24 +91,29 @@ class ClientHandler(asyncore.dispatcher_with_send):
         user = self.get_user(uid)
         out_msg = ''
         if user != None:
+            hangar = self.get_hangar(uid)
             logger.info('[%s:%d] User login with id \'%s\'', self._address[0], self._address[1], user['id'])
-            out_msg = '{"type":"response","to":"action","value":"login","status":"successful", "data":%s}' % anyjson.serialize(user)
+            out_msg = '{"type":"response","to":"action","value":"login","status":"successful", "data":{"user":%s,"hangar":%s}}' % (anyjson.serialize(user), anyjson.serialize(hangar))
         else:
             # create new user
-            user = self.create_user(uid)
-            out_msg = '{"type":"response","to":"action","value":"login","status":"successful", "data":%s}' % anyjson.serialize(user)
+            self.create_user(uid)
+
+            user = self.get_user(uid)
+            hangar = self.get_hangar(uid)
+            out_msg = '{"type":"response","to":"action","value":"login","status":"successful", "data":{"user":%s,"hangar":%s}}' % (anyjson.serialize(user), anyjson.serialize(hangar))
             
             logger.info('[%s:%d] New user created with id \'%s\'', self._address[0], self._address[1], uid)
         return out_msg
 
     def create_user(self, uid):
-        user = {'uid':uid, 'score':0, 'wave':0, 'money':1000}
-
-        query = "INSERT INTO pilot (id, score, wave, money) VALUES (%s, 0, 0, 1000)"
         cur = self._dbConnection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        query = "INSERT INTO pilot (id, score, wave, money) VALUES (%s, 0, 0, 1000)"
         cur.execute(query, (uid,))
+        # query = '''INSERT INTO hangar ("pilotId", "shipId", name, "weaponId", "armorId", "shieldId", "engineId") VALUES ('247059255488681', 'sh000', 'TS', 'wp000', 'am000', 'sd000', 'eg000')'''
+        query = '''INSERT INTO hangar ("pilotId", "shipId", name, "weaponId", "armorId", "shieldId", "engineId") VALUES (%s, 'sh000', 'AAF-S-00', 'wp000', 'am000', 'sd000', 'eg000')'''
+        cur.execute(query)
 
-        return user
+        self._dbConnection.commit()
 
     def handle_score_board(self, friends):
         users = self.get_score_board(friends)
@@ -121,19 +125,29 @@ class ClientHandler(asyncore.dispatcher_with_send):
         cur.execute(query, (uid,))
         row = cur.fetchone()
         if row:
+            row['id'] = row['id'].rstrip()
             return dict(row)
         else:
             return None
 
+    def get_hangar(self, uid):
+        query = 'SELECT * FROM "hangarData" WHERE "pilotId"=%s'
+        cur = self._dbConnection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cur.execute(query, (uid,))
+        rows = cur.fetchall()
+        return rows 
+
     def get_score_board(self, uids):
+        cur = self._dbConnection.cursor(cursor_factory=psycopg2.extras.DictCursor)
         if len(uids) == 0:
             return []
         elif len(uids) > 1:
-            query = "SELECT id, score, wave FROM pilot WHERE id IN %s;"
+            query = "SELECT id, score, wave, time FROM pilot WHERE id IN %s ORDER BY score DESC, wave DESC;"
+            cur.execute(query, (tuple(uids), ))
         elif len(uids) == 1:
-            query = "SELECT id, score, wave FROM pilot WHERE id=%s;"
-        cur = self._dbConnection.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        cur.execute(query, tuple(uids))
+            query = "SELECT id, score, wave, time FROM pilot WHERE id=%s ORDER BY score DESC, wave DESC;"
+            cur.execute(query, tuple(uids))
+        
         rows = cur.fetchall()
 
         users = []
@@ -156,30 +170,27 @@ class ClientHandler(asyncore.dispatcher_with_send):
 
     def encodeMessage(self, msg):
         return bytes(msg, 'utf-8')
+
 try:
     logger.info("Attemping to start server...")
-
-    # development code
-    # databaseConnection = psycopg2.connect('dbname={} user={} password={}'.format(Config.DB_NAME, Config.DB_USER, Config.DB_PASSWORD))
-    # logger.info("Connected to database server")
-    
-    SpaceInvaderServer()
+    server = SpaceInvaderServer()
     logger.info("Server started at 127.0.0.1:%d", Config.PORT)
     asyncore.loop()
 except KeyboardInterrupt as e:
     logger.info("Shutting down from KeyboardInterrupted")
     for client in clients:
         clients[client].close()
+    server.close()
     logger.info("All client connections closed")
-
-    # databaseConnection.commit()
-    # logger.info("Database commited")
-    # databaseConnection.close()
-    # logger.info("Database connection closed")
-    
+except asyncore.ExitNow as e:
+    logger.info("Shutting down from asyncore.ExitNow")
+    for client in clients:
+        clients[client].close()
+    server.close()
+    logger.info("All client connections closed")
 except Exception as e:
     logger.exception('Something went wrong')
-    logger.critical('Shutting down from unknow critical error: %s', e)
+    logger.critical('Shutting down from unknow critical error: %s:%s', e.reason, e)
 logger.info('Shutting down successful')
 logging.shutdown()
 
