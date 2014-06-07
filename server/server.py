@@ -71,6 +71,11 @@ class ClientHandler(asyncore.dispatcher_with_send):
                         elif msg['target'] == 'score_board':
                             # expect list of uid
                             out_msg = self.handle_score_board(msg['data'])
+                    elif msg['value'] == 'update':
+                        if msg['target'] == 'user':
+                            game_result = msg['game_result']
+                            self.handle_update_user(game_result['id'], game_result['score'], game_result['wave'], game_result['time'])
+
                     elif msg['value'] == 'login':
                         out_msg = self.handle_login(msg['uid'])
             except Exception as e:
@@ -87,6 +92,12 @@ class ClientHandler(asyncore.dispatcher_with_send):
 
         return '{"type":"response","to":"action","value":"get","target":"resource_register_data","status":"successful","data":%s}' % target_data
         
+    def handle_update_user(self, uid, score, wave, time):
+        cur = self._dbConnection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        query = '''UPDATE pilot SET score=%s, wave=%s, time=%s WHERE id=%s AND score<=%s'''
+        cur.execute(query, (score, wave, time, uid, score))
+        self._dbConnection.commit()
+
     def handle_login(self, uid):
         user = self.get_user(uid)
         out_msg = ''
