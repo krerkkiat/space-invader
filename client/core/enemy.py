@@ -46,14 +46,14 @@ class Enemy(MovingObject):
         self._rect = SurfaceManager.get(self._id)[0].get_rect()
         self._rect.x, self._rect.y = (-100, -100)
 
-        self._animeInterval = 200
+        self._animeInterval = 150
         self._animeCycle = 0
         self._anime = 0
 
         self._fireInterval = fireInterval
         self._fireCycle = 0
 
-        self._moveInterval = 200
+        self._moveInterval = 100
         self._moveCycle = 0
 
         self._healthBar = HealthBar(scene, self)
@@ -116,7 +116,7 @@ class Enemy(MovingObject):
             self._healthBar.kill()
 
             self._scene.game._pilot.score += self._score
-            print(self._scene.game._pilot.score)
+            # print(self._scene.game._pilot.score)
 
         self.dirty = 1
 

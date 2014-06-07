@@ -5,19 +5,79 @@ import pygame
 from config import *
 from core.scene import *
 
+class Button(SceneElement):
+    def __init__(self, scene, text, callBack=None):
+        super().__init__(scene)
+
+        self._text = text
+        self._mouseIn = False
+        self._callBack = callBack
+
+        self._font = pygame.font.Font(os.path.join(Config.assetsRoot, 'font', 'TudorRose.otf'), 20)
+        predit_size = self._font.size(text)
+        self._image = pygame.Surface((predit_size[0] + 15, predit_size[0] + 15))
+        self._rect = self._image.get_rect()
+        self._normal()
+
+    def _normal(self):
+        self._image.fill(Config.colors['black'])
+        txt_surface = self._font.render(self._text, True, Config.colors['white'], None)
+        txt_rect = txt_surface.get_rect()
+        txt_rect.centerx = self._rect.width//2
+        txt_rect.centery = self._rect.height//2
+        self._image.blit(txt_surface, txt_rect)
+
+    def _hilight(self):
+        self._image.fill(Config.colors['white'])
+        txt_surface = self._font.render(self._text, True, Config.colors['black'], None)
+        txt_rect = txt_surface.get_rect()
+        txt_rect.centerx = self._rect.width//2
+        txt_rect.centery = self._rect.height//2
+        self._image.blit(txt_surface, txt_rect)
+
+    def onClick(self):
+        if self._callBack:
+            self._callBack()
+
+    def update(self, cycleTime):
+        pass
+
+    @property
+    def image(self):
+        return self._image
+
+    @property
+    def rect(self):
+        return self._rect
+
+    def handleEvent(self, event):
+        if event.type == pygame.MOUSEMOTION:
+            pos = pygame.mouse.get_pos()
+
+            if self._rect.collidepoint(pos):
+                self._mouseIn = True
+                self._hilight()
+                self.dirty = 1
+            elif self._mouseIn:
+                self._mouseIn = False
+                self._normal()
+                self.dirty = 1
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            pos = pygame.mouse.get_pos()
+
+            if self._rect.collidepoint(pos):
+                self.onClick()
+
 class Table(SceneElement):
 
-    def __init__(self, scene, width, height, rowData, columnWidth, rowHeight=30):
+    def __init__(self, scene, width, height, rowData, columnWidth, title='', rowHeight=30, line=True, button=True):
         '''Please put column name to rowData at 1st position'''
         super().__init__(scene)
 
-        self._width = width
-        self._height = height
-        self._rowHeight = rowHeight
-        self._columnWidth = columnWidth
-
         self._image = pygame.Surface((width, height))
         self._rect = self._image.get_rect()
+
+        self._tableImage = pygame.Surface((width, height-50))
         
         self._upBtn = pygame.sprite.DirtySprite()
         self._upBtn.image = SurfaceManager.get('upBtn')[0]
@@ -34,12 +94,21 @@ class Table(SceneElement):
         self._dummyMouse = pygame.sprite.DirtySprite()
         self._dummyMouse.rect = pygame.Rect(0, 0, 10, 10)
 
+        self._width = width
+        self._height = height - 50
+        self._rowHeight = rowHeight
+        self._columnWidth = columnWidth
+        self._line = line
+        self._button = button
         self._startRow = -1
+        
+        font = pygame.font.Font(os.path.join(Config.assetsRoot, 'font', 'TudorRose.otf'), 25)
+        self._title = font.render(title, True, Config.colors['white'], None)
 
         font = pygame.font.Font(os.path.join(Config.assetsRoot, 'font', 'TudorRose.otf'), 20)
 
-        padding = 10
         # create rows
+        padding = 10
         self._rows = []
         for row in rowData[:]:
             row_surface = pygame.Surface((width-21, rowHeight))
@@ -63,38 +132,43 @@ class Table(SceneElement):
         self._generateImage()
 
     def _generateImage(self):
-        self._image.fill(Config.colors['black'])
+        self._tableImage.fill(Config.colors['black'])
 
         rect = pygame.Rect(1, 1-(self._rowHeight*self._startRow), self._width-20, self._rowHeight)
         for row in self._rows:
-            self._image.blit(row, rect)
+            self._tableImage.blit(row, rect)
             rect.move_ip(0, self._rowHeight)
 
-        self._image.blit(self._rowHeader, (1, 1))
+        self._tableImage.blit(self._rowHeader, (1, 1))
 
-        # header line
-        pygame.draw.line(self._image, Config.colors['white'], (0, self._rowHeight - 1), (self._width - 20, self._rowHeight - 1), 1)
-        # left line
-        # pygame.draw.line(self._image, Config.colors['white'], (0, 0), (0, self._height), 1)
-        # inner right line
-        pygame.draw.line(self._image, Config.colors['white'], (self._width - 20, 0), (self._rect.width - 20, self._height), 1)
-        # outer right line
-        # pygame.draw.line(self._image, Config.colors['white'], (self._width - 1, 0), (self._rect.width - 1, self._height - 1), 1)
-        # top line
-        pygame.draw.line(self._image, Config.colors['white'], (0, 0), (self._width - 20, 0), 1)
-        # bottom line
-        pygame.draw.line(self._image, Config.colors['white'], (0, self._height - 1), (self._width - 20, self._height - 1), 1)
+        if self._line:
+            # header line
+            pygame.draw.line(self._tableImage, Config.colors['white'], (0, self._rowHeight - 1), (self._width - 20, self._rowHeight - 1), 1)
+            # left line
+            # pygame.draw.line(self._tableImage, Config.colors['white'], (0, 0), (0, self._height), 1)
+            # inner right line
+            pygame.draw.line(self._tableImage, Config.colors['white'], (self._width - 20, 0), (self._rect.width - 20, self._height), 1)
+            # outer right line
+            # pygame.draw.line(self._tableImage, Config.colors['white'], (self._width - 1, 0), (self._rect.width - 1, self._height - 1), 1)
+            # top line
+            pygame.draw.line(self._tableImage, Config.colors['white'], (0, 0), (self._width - 20, 0), 1)
+            # bottom line
+            pygame.draw.line(self._tableImage, Config.colors['white'], (0, self._height - 1), (self._width - 20, self._height - 1), 1)
 
-        # column lines
-        i = 0
-        start = 0
-        while i < len(self._columnWidth):
-            pygame.draw.line(self._image, Config.colors['white'], (start, 0), (start, self._height))
-            start += self._columnWidth[i]
-            i += 1
+            # column lines
+            i = 0
+            start = 0
+            while i < len(self._columnWidth):
+                pygame.draw.line(self._tableImage, Config.colors['white'], (start, 0), (start, self._height))
+                start += self._columnWidth[i]
+                i += 1
 
-        self._image.blit(self._upBtn.image, self._upBtn.rect)
-        self._image.blit(self._downBtn.image, self._downBtn.rect)
+        if self._button:
+            self._tableImage.blit(self._upBtn.image, self._upBtn.rect)
+            self._tableImage.blit(self._downBtn.image, self._downBtn.rect)
+
+        self._image.blit(self._title, (0, 0))
+        self._image.blit(self._tableImage, (0, 50))
 
     def update(self, cycleTime):
         pass
@@ -108,27 +182,16 @@ class Table(SceneElement):
         return self._rect
 
     def handleEvent(self, event):
-        if event.type == pygame.KEYDOWN:
-            pass
-        elif event.type == pygame.MOUSEMOTION:
-            self._dummyMouse.rect.centerx = event.pos[0]
-            self._dummyMouse.rect.centery = event.pos[1]
-
-            if pygame.sprite.collide_rect(self._dummyMouse, self._upBtn):
-                pass
-            elif pygame.sprite.collide_rect(self._dummyMouse, self._downBtn):
-                pass
-
-        elif event.type == pygame.MOUSEBUTTONDOWN:
+        if self._button and event.type == pygame.MOUSEBUTTONDOWN:
             pos = pygame.mouse.get_pos()
 
-            if self._upBtn.rect.move(self._rect.x, self._rect.y).collidepoint(pos):
+            if self._upBtn.rect.move(self._rect.x, self._rect.y+50).collidepoint(pos):
                 self._startRow += 1
                 if self._startRow >= len(self._rows)-2:
                     self._startRow = len(self._rows)-2
                 self._generateImage()
                 self.dirty = 1
-            elif self._downBtn.rect.move(self._rect.x, self._rect.y).collidepoint(pos):
+            elif self._downBtn.rect.move(self._rect.x, self._rect.y+50).collidepoint(pos):
                 self._startRow -= 1
                 if self._startRow <= -1:
                     self._startRow = -1
@@ -165,7 +228,7 @@ class MessageBox(SceneElement):
             self._rect.left = padding
             self._rect.top = padding
 
-        font = pygame.font.Font(os.path.join(Config.assetsRoot, 'font', 'TudorRose.otf'), 20)
+        font = pygame.font.Font(os.path.join(Config.assetsRoot, 'font', 'TudorRose.otf'), 30)
         message_surface = font.render(message, True, Config.colors['black'], None)
         message_rect = message_surface.get_rect()
 
@@ -203,6 +266,45 @@ class MessageBox(SceneElement):
                 self.kill()
                 self._scene.removeEventListener(self.handleEvent)
 
+class ScoreBar(SceneElement):
+    def __init__(self, scene, pilot):
+        super().__init__(scene)
+
+        self._pilot = pilot
+
+        self._image = pygame.Surface((Config.windowWidth*2//6, 70))
+        # self._image.fill(Config.colors['white'])
+        self._image.set_alpha(180)
+        self._rect = self._image.get_rect()
+        self._rect.left = 0
+
+        self.generateImage()
+
+    def generateImage(self):
+        self._image.fill(Config.colors['black'])
+        pygame.draw.line(self._image, Config.colors['white'], (0, 6), (self._rect.width * 2//3, 6), 2)
+        pygame.draw.line(self._image, Config.colors['white'], (self._rect.width//8, 1), (self._rect.width, 1), 2)
+
+        font = pygame.font.Font(os.path.join(Config.assetsRoot, 'font', 'TudorRose.otf'), 23)
+        
+        pilot_txt = font.render('Score / Wave', True, Config.colors['white'], None)
+        self._image.blit(pilot_txt, (10, 8))
+
+        pilot_name_txt = font.render(str(self._pilot.score) + ' / ' + str(self._pilot.wave), True, Config.colors['white'], None)
+        self._image.blit(pilot_name_txt, (50, 30))
+
+    def update(self, cycleTime):
+        self.generateImage()
+        self.dirty = 1
+
+    @property
+    def image(self):
+        return self._image
+
+    @property
+    def rect(self):
+        return self._rect
+
 class PilotBar(SceneElement):
     def __init__(self, scene, pilot):
         super().__init__(scene)
@@ -216,14 +318,14 @@ class PilotBar(SceneElement):
         self._rect.left = 0
         self._rect.bottom = Config.windowHeight
 
-        pygame.draw.line(self._image, Config.colors['white'], (self._rect.width//8, 65), (self._rect.width, 65), 2)
         pygame.draw.line(self._image, Config.colors['white'], (0, 60), (self._rect.width * 2//3, 60), 2)
+        pygame.draw.line(self._image, Config.colors['white'], (self._rect.width//8, 65), (self._rect.width, 65), 2)
 
         self._image.blit(self._pilot.profilePicture, (5, 5))
 
         font = pygame.font.Font(os.path.join(Config.assetsRoot, 'font', 'TudorRose.otf'), 20)
         
-        pilot_txt = font.render('Pilot', True, Config.colors['white'], None)
+        pilot_txt = font.render('Pilot / Score' + str(self._pilot.score), True, Config.colors['white'], None)
         self._image.blit(pilot_txt, (60, 5))
 
         pilot_name_txt = font.render(self._pilot.name, True, Config.colors['white'], None)

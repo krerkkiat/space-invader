@@ -43,11 +43,6 @@ class MovingObject(SceneElement):
     def velocity(self):
         return self._velocity
 
-# why i need to do this ?
-# maybe ahh python dose not interprete MovingObject before SpaceShip need it
-from core.enemy import *
-from core.spaceship import *
-
 class Scene:
 
     def __init__(self, game):
@@ -60,6 +55,12 @@ class Scene:
         self._background = pygame.Surface(self._canvas.get_size())
         self._clock = pygame.time.Clock()
         self._totalTimePassed = 0
+
+    def redraw(self):
+        self._canvas.blit(self._background, (0, 0))
+        for ele in self._elements:
+            ele.dirty = 1
+        pygame.display.flip()
 
     @property
     def game(self):
@@ -103,6 +104,55 @@ class Scene:
 
     def addElement(self, element, layer=0):
         self._elements.add(element, layer=layer)
+
+class SummaryScene(Scene):
+    def __init__(self, game):
+        super().__init__(game)
+
+        self._background = pygame.display.get_surface()
+        self._background.set_alpha(180)
+        self._background.fill(Config.colors['black'])
+        self._elements.clear(self._canvas, self._background)
+
+        w, h = (200, 200)
+        rowData = [('Score', 'Wave'), (str(self._game._pilot.score), str(self._game._pilot.wave))]
+        columnWidth = [100, 100]
+        self._scoreBoard = Table(self, w, h, rowData, columnWidth, title='Summary', line=False, button=False)
+        self._scoreBoard.rect.centerx = Config.windowWidth//2
+        self._scoreBoard.rect.centery = Config.windowHeight//2
+        self.addElement(self._scoreBoard)
+
+        def callBack():
+            # SceneManager.call(MainScene(self._game), Preload(self._game))
+            self._game._pilot.update()
+            SceneManager.ret(Preload(self._game))
+        self._btn = Button(self, 'Continue', callBack)
+        self._btn.rect.right = self._scoreBoard.rect.right
+        self._btn.rect.top = self._scoreBoard.rect.bottom
+        self.addElement(self._btn)
+        self.addEventListener(self._btn.handleEvent)
+
+    def loadData(self):
+        pass
+
+    def run(self):
+        for event in pygame.event.get():
+            self._handleEvent(event)
+        self.update()
+        self.draw()
+        self._clock.tick(Config.ticks)
+
+    def update(self):
+        super().update()
+
+    def draw(self):
+        updatedRects = self._elements.draw(self._canvas)
+        pygame.display.update(updatedRects)
+
+# why i need to do this ?
+# maybe ahh python dose not interprete MovingObject before SpaceShip need it
+from core.enemy import *
+from core.spaceship import *
 
 class Preload(Scene):
     def __init__(self, game, background=None, nextScene=None):
@@ -155,6 +205,8 @@ class Preload(Scene):
 
         if not self._isLoading:
             print('Load complete going to nextScene:', self._nextScene.__class__)
+            if self._nextScene:
+                self._nextScene.redraw()
             SceneManager.goto(self._nextScene)
 
     def update(self):
@@ -187,21 +239,36 @@ class MainScene(Scene):
 
     def loadData(self, preload):
         preload.isLoading = True
-        # try: 
-        self._createScoreBoard()
-        # except Exception as e:
-            # print(e)
-            # SceneManager.exit()
+        try: 
+            self._createScoreBoard()
+            self._createUI()
+        except Exception as e:
+            print(e)
+            SceneManager.exit()
 
         preload.isLoading = False
+        # SceneManager.goto(GameScene(self._game, {}, 7))
+        # SceneManager.call(TestScene(self._game))
+
+    def _createUI(self):
+        def callBack():
+            SceneManager.call(TestScene(self._game))
+        self._startBtn = Button(self, 'Start', callBack)
+        self._startBtn.rect.right = Config.windowWidth
+        self._startBtn.rect.bottom = Config.windowHeight
+        self.addElement(self._startBtn)
+        self.addEventListener(self._startBtn.handleEvent)
 
     def _createScoreBoard(self):
         # get friends list
         fb_result = fb.fql('SELECT uid, name FROM user WHERE is_app_user AND uid IN (SELECT uid2 FROM friend WHERE uid1 = me())')
 
+        # insert me
+        fb_result.extend([{'uid':self._game._pilot.id, 'name':'You'}])       # Pornchanok id
+
         # insert some fake data
         fb_result.extend([{'uid':'100000533319275', 'name':'Pornchanok'}])       # Pornchanok id
-        fb_result.extend([{'uid':'247059255488681', 'name':'Test User #1'}])     # friend of Test User #1
+        # fb_result.extend([{'uid':'247059255488681', 'name':'Test User #1'}])     # friend of Test User #1
         # fb_result.extend([{'uid':'252287594960325', 'name':'Test User #2'}])     # friend of Test User #2
 
         friends_that_use_this_app = [entry['uid'] for entry in fb_result]
@@ -221,15 +288,13 @@ class MainScene(Scene):
 
         w, h = (400, 600)
         rowData = [('', 'Name', 'Score', 'Wave')]
-        rowData.extend([(str(i+1), pilot.name, str(pilot.bestScore), str(pilot.bestWave)) for i, pilot in enumerate(self._friends)])
+        rowData.extend([(str(i), pilot.name, str(pilot.bestScore), str(pilot.bestWave)) for i, pilot in enumerate(self._friends, 1)])
         columnWidth = [30, 200, 75, 75]
-        self._scoreBoard = Table(self, w, h, rowData, columnWidth)
-        self._scoreBoard.rect.bottom = Config.windowHeight
+        self._scoreBoard = Table(self, w, h, rowData, columnWidth, title='Score board')
         self.addElement(self._scoreBoard)
         self.addEventListener(self._scoreBoard.handleEvent)
 
     def run(self):
-        # SceneManager.goto(GameScene(self._game, {}, 7))
         for event in pygame.event.get():
             self._handleEvent(event)
         
@@ -275,7 +340,9 @@ class GameScene(Scene):
 
         # add HUD
         self._pilotBar = PilotBar(self, self._game._pilot)
+        self._scoreBar = ScoreBar(self. self._game._pilot)
         self.addElement(self._pilotBar)
+        self.addElement(self._scoreBar)
 
     def addSpaceshipBullet(self, bullet):
         self._spaceshipFleetBullets.add(bullet)
@@ -309,27 +376,6 @@ class GameScene(Scene):
             if len(bulletHitSpaceShip[bullet]) != 0:
                 for spaceship in bulletHitSpaceShip[bullet]:
                     spaceship.onBulletHit(bullet)
-
-    def draw(self):
-        updatedRects = self._elements.draw(self._canvas)
-        pygame.display.update(updatedRects)
-
-class SummaryScene(Scene):
-    def __init__(self, game):
-        pass
-
-    def loadData(self):
-        pass
-
-    def run(self):
-        for event in pygame.event.get():
-            self._handleEvent(event)
-        self.update()
-        self.draw()
-        self._clock.tick(Config.ticks)
-
-    def update(self):
-        super().update()
 
     def draw(self):
         updatedRects = self._elements.draw(self._canvas)
@@ -377,24 +423,29 @@ class TestScene(Scene):
         shield = Shield('sd000', 'TestShield', 10, 2000, 10)
         engine = Engine('eg000', 'TestEngine', 70, 2, 2000)
 
-        testship = SpaceShip(self, 'sh000', '100001868030396', 'TestShip', 100, weapon, armor, shield, engine)
+        testship = SpaceShip(self, 'sh000', '100001868030396', 'TestShip', 10, weapon, armor, shield, engine)
         testship.velocity.x = 10
         testship.velocity.y = 10
         testship.rect.centerx = Config.windowWidth/2
         testship.rect.centery = Config.windowHeight - testship.rect.height - 110
         self._fleet.add(testship)
 
+        self.nextWave()
+
         self.addElement(testship)
         self.addEventListener(testship.handleEvent)
         
+        self._pilotBar = PilotBar(self, self._game._pilot)
+        self._scoreBar = ScoreBar(self, self._game._pilot)
+        self.addElement(self._pilotBar)
+        self.addElement(self._scoreBar)
+
+    def nextWave(self):
+        self._game._pilot.wave += 1
+        self.addElement(MessageBox(self, 'Wave ' + str(self._game._pilot.wave), interval=1000, position='middle', textPosition='center'))
         self._enemys = self._generator.nextWave()
         for e in self._enemys:
             self.addElement(e)
-
-        self._pilotBar = PilotBar(self, self._game._pilot)
-        self.addElement(self._pilotBar)
-
-        self.addElement(MessageBox(self, 'Test Text ^^', interval=1200))
 
     def addSpaceshipBullet(self, bullet):
         self._spaceShipBullets.add(bullet)
@@ -428,6 +479,9 @@ class TestScene(Scene):
             if len(bulletHitSpaceShip[bullet]) != 0:
                 for spaceship in bulletHitSpaceShip[bullet]:
                     spaceship.onBulletHit(bullet)
+
+        if len(self._enemys) == 0:
+            self.nextWave()
 
     def draw(self):
         updatedRects = self._elements.draw(self._canvas)

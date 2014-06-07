@@ -2,10 +2,12 @@ import io
 import urllib.request
 
 import pygame
+import anyjson
 import fbconsole as fb
 from pygame.compat import as_bytes
 
 from config import *
+from core.manager import *
 
 class Pilot:
     def __init__(self, id_, name, bestScore, bestWave, time):
@@ -18,7 +20,7 @@ class Pilot:
         self._bestTime = time
 
         self._hangar = []
-        self._inventory = []
+        self._inventory = []    
 
         if self._name == None:
             result = fb.get('/me', {'fields':'name'})
@@ -30,6 +32,16 @@ class Pilot:
         profile_pic_url = fb.graph_url('/{uid}/picture'.format(uid=self._id))
         with urllib.request.urlopen(profile_pic_url) as raw_img:
             self._profilePicture = pygame.image.load(BytesIO(raw_img.read()))
+
+    def update(self):
+        game_result = {
+            "id": self._id,
+            "score": self._score,
+            "wave": self._wave,
+            "time": 0
+        }
+        data = bytes('{"type":"action","value":"update","target":"user","game_result":%s}' % (anyjson.serialize(game_result)), 'utf-8')
+        result = ConnectionManager.send(data, wait=False)
         
     @property
     def id(self):

@@ -27,12 +27,30 @@ class SceneManager:
             class_.currentScene = scene
 
     @classmethod
-    def ret(class_):
-        class_.currentScene = class_.sceneStack.pop(len(class_.sceneStack)-1)
+    def ret(class_, preload=None):
+        scene = class_.sceneStack.pop(len(class_.sceneStack)-1)
+
+        if preload:
+            preload.nextScene = scene
+            class_.currentScene = preload
+            load_thread = threading.Thread(target=scene.loadData, args=(preload,))
+            load_thread.start()
+        else:
+            class_.currentScene = scene
+            if class_.currentScene:
+                class_.currentScene.redraw()
 
     @classmethod
-    def goto(class_, scene):
-        class_.currentScene = scene
+    def goto(class_, scene, preload=None):
+        if preload:
+            preload.nextScene = scene
+            class_.currentScene = preload
+            load_thread = threading.Thread(target=scene.loadData, args=(preload,))
+            load_thread.start()
+        else:
+            class_.currentScene = scene
+            if class_.currentScene:
+                class_.currentScene.redraw()
 
     @classmethod
     def clear(class_):
@@ -58,16 +76,17 @@ class ConnectionManager:
         class_._socket.connect((Config.host, Config.port))
 
     @classmethod
-    def send(class_, message):
+    def send(class_, message, wait=True):
         '''send and recv ??'''
         if type(message) == bytes:
             class_._socket.send(message)
         else:
             class_._socket.send(bytes(message, 'utf-8'))
-
-        src = class_._socket.recv(8192).decode('utf-8')
-        result = anyjson.deserialize(src)
-        return result
+        if wait:
+            src = class_._socket.recv(8192).decode('utf-8')
+            result = anyjson.deserialize(src)
+            return result
+        return None
 
     @classmethod
     def isSuccessfulResponse(class_, result):

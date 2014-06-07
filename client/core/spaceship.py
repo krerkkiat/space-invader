@@ -94,8 +94,8 @@ class SpaceShip(MovingObject):
             self._rect.top = 0
         if self._rect.right >= Config.windowWidth:
             self._rect.right = Config.windowWidth
-        if self._rect.bottom >= Config.windowHeight-100: 
-            self._rect.bottom = Config.windowHeight-100
+        if self._rect.bottom >= Config.windowHeight-70:
+            self._rect.bottom = Config.windowHeight-70
 
     def handleEvent(self, event):
         '''Override from core.scene.SceneElement'''
@@ -129,6 +129,7 @@ class SpaceShip(MovingObject):
         if self._hp <= 0:
             self.kill()
             self._healthBar.kill()
+            SceneManager.ret()
             SceneManager.call(SummaryScene(self._scene.game))
 
     @property
