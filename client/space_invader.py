@@ -1,5 +1,6 @@
 import os
 import sys
+import urllib
 import socket
 import threading
 
@@ -7,9 +8,10 @@ import pygame
 import fbconsole as fb
 
 from config import Config
-from core.scene import *
-from core.pilot import Pilot
 from core.manager import *
+from core.pilot import Pilot
+from core.scene.main import MainScene
+from core.scene.preload import Preload
 
 class SpaceInvader:
     def __init__(self):

@@ -2,7 +2,7 @@ import os
 
 import pygame
 
-from config import *
+from config import Config
 from core.scene import *
 
 class Button(SceneElement):
@@ -10,30 +10,34 @@ class Button(SceneElement):
         super().__init__(scene)
 
         self._text = text
-        self._mouseIn = False
+        self._state = 0
         self._callBack = callBack
 
         self._font = pygame.font.Font(os.path.join(Config.assetsRoot, 'font', 'TudorRose.otf'), 20)
         predit_size = self._font.size(text)
-        self._image = pygame.Surface((predit_size[0] + 15, predit_size[0] + 15))
+        self._image = pygame.Surface((predit_size[0] + 15, predit_size[0]))
         self._rect = self._image.get_rect()
-        self._normal()
 
-    def _normal(self):
-        self._image.fill(Config.colors['black'])
+        self._images = []
+        # normal state
+        image = pygame.Surface((predit_size[0] + 15, predit_size[0]))
+        image.fill(Config.colors['black'])
         txt_surface = self._font.render(self._text, True, Config.colors['white'], None)
         txt_rect = txt_surface.get_rect()
         txt_rect.centerx = self._rect.width//2
         txt_rect.centery = self._rect.height//2
-        self._image.blit(txt_surface, txt_rect)
+        image.blit(txt_surface, txt_rect)
+        self._images.append(image)
 
-    def _hilight(self):
-        self._image.fill(Config.colors['white'])
+        # hilight state
+        image = pygame.Surface((predit_size[0] + 15, predit_size[0]))
+        image.fill(Config.colors['white'])
         txt_surface = self._font.render(self._text, True, Config.colors['black'], None)
         txt_rect = txt_surface.get_rect()
         txt_rect.centerx = self._rect.width//2
         txt_rect.centery = self._rect.height//2
-        self._image.blit(txt_surface, txt_rect)
+        image.blit(txt_surface, txt_rect)
+        self._images.append(image)
 
     def onClick(self):
         if self._callBack:
@@ -44,7 +48,7 @@ class Button(SceneElement):
 
     @property
     def image(self):
-        return self._image
+        return self._images[self._state]
 
     @property
     def rect(self):
@@ -55,12 +59,10 @@ class Button(SceneElement):
             pos = pygame.mouse.get_pos()
 
             if self._rect.collidepoint(pos):
-                self._mouseIn = True
-                self._hilight()
+                self._state = 1
                 self.dirty = 1
-            elif self._mouseIn:
-                self._mouseIn = False
-                self._normal()
+            elif self._state:
+                self._state = 0
                 self.dirty = 1
         elif event.type == pygame.MOUSEBUTTONDOWN:
             pos = pygame.mouse.get_pos()

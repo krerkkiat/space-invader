@@ -1,27 +1,11 @@
 import random
 
-from core.scene import *
-from core.movement import *
+import pygame
 
-class EnemyWaveGenerator:
-    def __init__(self, scene, paths, seed=None):
-        self._scene =scene
-        self._paths = paths
-        self._seed = seed
-        random.seed(seed)
-
-    def nextWave(self):
-        enemys = pygame.sprite.LayeredDirty()
-
-        path_index = random.choice(range(len(self._paths)))
-
-        path = self._paths[path_index]()
-        for i in range(-1, -35, -5):
-            m = Movement(path, i)
-            tem = Enemy(self._scene, 'em000', 'TestEnemy', 20, 10, 3, 200 + random.randint(1000, 2000), 10, m)
-            enemys.add(tem)
-
-        return enemys
+from core.ui import HealthBar
+from core.manager import SurfaceManager
+from core.movement import Movement
+from core.scene.elements import MovingObject
 
 class Enemy(MovingObject):
 
@@ -155,5 +139,24 @@ class Enemy(MovingObject):
     def score(self):
         return self._score
 
-# why i need to do like this?
-from core.spaceship import *
+from core.spaceship.weapon import Bullet
+
+class EnemyWaveGenerator:
+    def __init__(self, scene, paths, seed=None):
+        self._scene =scene
+        self._paths = paths
+        self._seed = seed
+        random.seed(seed)
+
+    def nextWave(self):
+        enemys = pygame.sprite.LayeredDirty()
+
+        path_index = random.choice(range(len(self._paths)))
+
+        path = self._paths[path_index]()
+        for i in range(-1, -35, -5):
+            m = Movement(path, i)
+            tem = Enemy(self._scene, 'em000', 'TestEnemy', 20, 10, 3, 200 + random.randint(1000, 2000), 10, m)
+            enemys.add(tem)
+
+        return enemys
