@@ -1,23 +1,34 @@
-*User
-    uid, score
+--Database--
+spaceInvader
 
-*SpaceShip
-    ssid, type, base_life, base_energy
+--Tables--
+pilot
+    id, score, wave, money, time
 
-*User&SpaceShip
-    uid, ssid, wid, wid, aid
+spaceship
+    id, hp
 
-*Weapon
-    wid
+hanger
+    pilotId, shipId, name, weaponId, armorId, shieldId, engineId
 
-*Armor
-    aid
+weapon
+    id, name, attack, bulletId
+    
+bullet
+    id, bulletSpeed
 
-Level
-    lid, sid
-
-Stage
-    sid, eid, ...
-
-Enemy
-    eid,
+armor
+    id, name, defence
+   
+engine
+    id, name, maxEnergy, regenerateRate
+    
+shield
+    id, name, drainRate, hitDrainRate
+    
+enemy 
+    id, name, attack, defence, fireInterval, score
+    
+    
+--------
+Wave and Movement based enemy.
